@@ -1,0 +1,26 @@
+digraph G {
+    rankdir = LR;
+    "Step 1" [style=filled, fillcolor=lightgray];
+    "Step 10" [style=filled, fillcolor=red, fontcolor=white];
+    "Step 11" [style=filled, fillcolor=lightgray];
+    "Step 2" [style=filled, fillcolor=lightgray];
+    "Step 3" [style=filled, fillcolor=lightgray];
+    "Step 4" [style=filled, fillcolor=lightgray];
+    "Step 5" [style=filled, fillcolor=lightgray];
+    "Step 6" [style=filled, fillcolor=lightgray];
+    "Step 7" [style=filled, fillcolor=lightgray];
+    "Step 8" [style=filled, fillcolor=lightgray];
+    "Step 9" [style=filled, fillcolor=lightgray];
+    "Step 1" -> "Step 2";
+    "Step 10" -> "Step 11";
+    "Step 2" -> "Step 3";
+    "Step 2" -> "Step 4";
+    "Step 3" -> "Step 5";
+    "Step 3" -> "Step 7";
+    "Step 4" -> "Step 9";
+    "Step 5" -> "Step 6";
+    "Step 6" -> "Step 10";
+    "Step 7" -> "Step 8";
+    "Step 8" -> "Step 10";
+    "Step 9" -> "Step 10";
+    }
