@@ -28,12 +28,12 @@ ARCHITECTURE OVERVIEW:
 
 PROJECT STRUCTURE:
 dag_health_api/
--- main.py # Main FastAPI application
--- requirements.txt # Python dependencies
--- sample_request.json # Example input JSON
--- README.md # Project documentation
--- graph.dot # (Optional) Graphviz DOT output
--- graph.png # png pic
+- main.py # Main FastAPI application
+- requirements.txt # Python dependencies
+- sample_request.json # Example input JSON
+- README.md # Project documentation
+- graph.dot # (Optional) Graphviz DOT output
+- graph.png # png pic
 
 
 INPUT FORMAT:
