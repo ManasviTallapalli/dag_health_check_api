@@ -10,8 +10,7 @@ import httpx
 import time
 
 
-
-# 1. Input the JSON 
+# 1. Input: The API accepts json input in the below format
 
 # data model for a single component in our system
 class Component(BaseModel):
@@ -20,39 +19,27 @@ class Component(BaseModel):
     health_url: Optional[str] = None # optional but if present then its a string. if missing default to None
 
 class SystemRequest(BaseModel):
-    components: List[Component] # overall structure of the request body. we are saying incoming json must have components field which is a list of component objects
+    components: List[Component] # overall structure of the request body: list of components
 
 app = FastAPI()
 
 # ---------------------------------
 
-# 2. Build graph from json so we cam understand relationships
+# 2. Build graph from json so we can understand relationships
 # list[Component] in the argument is called type hint. we are giving a hint about the type
 def build_children_and_parents(components: list[Component]):
-    # first put all nodes in a set
+    # first put all nodes in a set so there are no duplicates
     nodes = set()
     for c in components:
         nodes.add(c.id)
         
-        
-    # nodes = {}
-    # for c in components:
-    #     nodes[c['id']] = []
-
-    # now we have all nodes in a set
-    # next lets define the parents and children for each node
+    # now we have all nodes in a set, next lets define the parents and children for each node
 
     # given a child node, tell me all its parents
     children_to_parents = defaultdict(list) # in a defaultdict if a key is missing it automatically creates a default value which is an empty list here
     parents_to_children = defaultdict(list) # given a parent, tell me all its children
 
-# Components =[
-#     Component(id: "Step 1", depends_on: []),
-#     Component(id: "Step 2", depends_on: ["Step 1"])
-#     Component(id: "Step 3", depends_on: ["Step 2"])
-# ]
-
-    # check is the dependency exists in list of nodes. return error if not existing
+    # check if the dependency exists in list of nodes. return error if not existing
     for c in components:
         for p in c.depends_on:
             if p not in nodes:
@@ -120,7 +107,7 @@ async def check_one_component_health(client: httpx.AsyncClient,comp: Component):
     """
     Checks the component health_url:
     - if missing then status=unknown
-    - if htpp 200 = healthy
+    - if http 200 = healthy
     - else = unhealthy
     """
 
@@ -187,8 +174,8 @@ async def system_health(req: SystemRequest):
 
     # result = build_children_and_parents(req.components)
     # nodes = result[0]
-    # parents = result[1]
-    # children = result[2]
+    # children_to_parents = result[1]
+    # parents_to_children = result[2]
 
     # 2. bfs like traversal using kahns algorithm
     order = kahns_alg(nodes, children_to_parents, parents_to_children)
