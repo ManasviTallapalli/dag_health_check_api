@@ -11,23 +11,45 @@ import time
 
 
 # 1. Input: The API accepts json input of a dag
-
-# data model for a single component in our system
 class Component(BaseModel):
+    """
+    Represents the data model a single system component.
+    Attributes:
+        id: Unique identifier for the component.
+        depends_on: List of component IDs this component depends on.
+        health_url: Optional health check endpoint for the component.
+    """ 
     id: str
     depends_on: List[str] = []  # each item is a list with strings inside. If missing then default to empty list
     health_url: Optional[str] = None # optional but if present then its a string. if missing default to None
 
 class SystemRequest(BaseModel):
+    """
+    Request model for system health checks.
+
+    Attributes:
+        components: List of components forming a DAG.
+    """
     components: List[Component] # overall structure of the request body: list of components
 
 app = FastAPI()
 
 # ---------------------------------
 
-# 2. Build graph from json so we can understand relationships
-# list[Component] in the argument is called type hint. we are giving a hint about the type
+# 2. Build graph from json to understand relationships
+# list[Component] in the argument is called type hint. We are giving a hint about the type
 def build_children_and_parents(components: list[Component]):
+    """
+    Builds parent and child adjacency mappings from the component list.
+
+    Returns:
+        nodes: Set of all component IDs.
+        children_to_parents: Mapping of node -> list of parent nodes.
+        parents_to_children: Mapping of node -> list of child nodes.
+
+    Raises:
+        HTTPException: If a dependency references an unknown component.
+    """
     # first put all nodes in a set so there are no duplicates
     nodes = set()
     for c in components:
@@ -65,6 +87,15 @@ def build_children_and_parents(components: list[Component]):
 
 
 def bfs_for_dag(nodes, children_to_parents, parents_to_children):
+    """
+    Performs a BFS-based topological traversal of a DAG.
+
+    Returns:
+        A list of node IDs in dependency-safe order.
+
+    Raises:
+        HTTPException: If a cycle is detected.
+    """
 
     # store count of how many parents each node has
     count_of_parents_each_node = {}
@@ -108,10 +139,12 @@ def bfs_for_dag(nodes, children_to_parents, parents_to_children):
 
 async def check_one_component_health(client: httpx.AsyncClient, comp: Component):
     """
-    Checks the component health_url:
-    - if missing then status=unknown
-    - if http 200 = healthy
-    - else = unhealthy
+    Asynchronously checks the health of a single component.
+
+    Health logic:
+        - Missing health_url -> status = unknown
+        - HTTP 200 -> healthy
+        - Any other response / exception -> unhealthy
     """
 
     # if health_url is missing (as components are coming from external) we dont want it to fail. so mark them unknown
@@ -144,6 +177,10 @@ async def check_one_component_health(client: httpx.AsyncClient, comp: Component)
 # This function generates that DOT text and marks failed nodes red.
 
 def build_dot_graph(nodes, parents_to_children, health_failed_nodes):
+    """
+    Generates a Graphviz DOT representation of the DAG.
+    Failed components are highlighted in red.
+    """
     lines = [
         "digraph G {", # means “start a directed graph named G”
         "rankdir = LR;"  # means “draw the graph left to right”
@@ -168,6 +205,15 @@ def build_dot_graph(nodes, parents_to_children, health_failed_nodes):
 @app.post("/system/health") # Creates an HTTP POST endpoint
 # async as we will use await next
 async def system_health(req: SystemRequest):
+    """
+    Evaluates the health of a system represented as a DAG.
+
+    Steps:
+        1. Build and validate the dependency graph
+        2. Traverse the graph in dependency-safe order
+        3. Perform async health checks
+        4. Aggregate results and generate visualization
+    """
     # 1. build graph
     nodes, children_to_parents, parents_to_children = build_children_and_parents(req.components)
 
@@ -241,10 +287,12 @@ async def system_health(req: SystemRequest):
 
 @app.get('/demo/ok')
 def demo_ok():
+    """Simulates a healthy service."""
     return {"status": "ok"}
 
 @app.get('/demo/fail')
 def demo_fail():
+    """Simulates a failing service."""
     raise HTTPException(status_code=500, detail = "demo failure")
 
 

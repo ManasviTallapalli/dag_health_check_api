@@ -8,7 +8,7 @@ Each component can depend on other components, and the system health is evaluate
 - Optionally generating a visual DAG representation highlighting failures
 
 
-FEATURES:
+**FEATURES**:
 - Accepts system relationships via JSON
 - Validates DAG structure and detects cycles
 - Traverses the graph using BFS (Kahn’s Algorithm)
@@ -18,7 +18,7 @@ FEATURES:
 - Outputs Graphviz DOT representation with failed nodes highlighted
 
 
-ARCHITECTURE OVERVIEW:
+**ARCHITECTURE OVERVIEW**:
 - **FastAPI** for API framework
 - **Pydantic** for request validation
 - **Kahn’s Algorithm** for BFS/topological traversal
@@ -26,17 +26,17 @@ ARCHITECTURE OVERVIEW:
 - **Graphviz DOT** output for optional visualization
 
 
-PROJECT STRUCTURE:
+**PROJECT STRUCTURE**:
 dag_health_api/
 - main.py # Main FastAPI application
 - requirements.txt # Python dependencies
 - sample_request.json # Example input JSON
 - README.md # Project documentation
 - graph.dot # (Optional) Graphviz DOT output
-- graph.png # png pic
+- graph.png # png picture
 
 
-INPUT FORMAT:
+**INPUT FORMAT**:
 The API accepts a JSON payload describing system components and their dependencies.
 
 Example (`sample_request.json`):
