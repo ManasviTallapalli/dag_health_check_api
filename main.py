@@ -10,7 +10,7 @@ import httpx
 import time
 
 
-# 1. Input: The API accepts json input in the below format
+# 1. Input: The API accepts json input of a dag
 
 # data model for a single component in our system
 class Component(BaseModel):
@@ -56,6 +56,7 @@ def build_children_and_parents(components: list[Component]):
     for n in nodes:
         parents_to_children.setdefault(n,[]) # if n is not a node in children then create it with an empty list
         children_to_parents.setdefault(n,[])
+
     
     # print("Parents:",parents)
     # print("Children:",children)
@@ -63,39 +64,41 @@ def build_children_and_parents(components: list[Component]):
     return nodes, children_to_parents, parents_to_children
 
 
-# kahns algorithm for bfs for a directed graph
-def kahns_alg(nodes, children_to_parents, parents_to_children):
-    # 1. calculate indegree for each node
-    indegree = {}
-    for n in nodes:
-        indegree[n]  = len(children_to_parents[n])
+def bfs_for_dag(nodes, children_to_parents, parents_to_children):
 
-    # indegree = {n: len(parents[n]) for n in nodes}
+    # store count of how many parents each node has
+    count_of_parents_each_node = {}
+    for node in nodes:
+        p_count = len(children_to_parents[node])
+        count_of_parents_each_node[node] = p_count
 
-    # 2. put all nodes with indegree = 0 in a queue
-    q = deque()
-    for key, deg in indegree.items():
-        if deg == 0:
-            q.append(key)
-    
-    # q = deque([n for n in nodes if indegree[n] == 0])
+    # store nodes with no parents in a queue
+    queue = deque()
+    for node in nodes:
+        if count_of_parents_each_node[node] == 0:
+            queue.append(node)
 
-    # 3.While queue not empty, pop one node (this node is ready), add it to output order
     order = []
-    while q:
-        current = q.popleft()
-        order.append(current)
+    processed = 0 # counts how many nodes we processed
 
-        # 4. for each of its children: reduce child indegree by 1. if child indegree becomes 0, add child to queue
-        for child in parents_to_children[current]:
-            indegree[child] -= 1
-            if indegree[child] == 0:
-                q.append(child)
+    # bfs loop
+    while queue:
+        level_size = len(queue) # no of nodes on this level
 
-    # 5. If you processed all nodes → valid DAG. If not → there is a cycle (not allowed)
-    if len(order) != len(nodes):
-        raise HTTPException(status_code=400, detail='Cycle detected. Not a DAG')
-        
+        for _ in range(level_size):
+            current = queue.popleft()
+            order.append(current)
+            processed += 1
+
+            for child in parents_to_children[current]:
+                count_of_parents_each_node[child] -= 1
+                if count_of_parents_each_node[child] == 0:
+                    queue.append(child)
+
+    # detect if there are any cycles
+    if processed != len(nodes):
+        raise HTTPException(status_code=400, detail="Cycle detected. Not a DAG." )
+    
     return order
 
 
@@ -103,7 +106,7 @@ def kahns_alg(nodes, children_to_parents, parents_to_children):
 
 # 3. Async health checks
 
-async def check_one_component_health(client: httpx.AsyncClient,comp: Component):
+async def check_one_component_health(client: httpx.AsyncClient, comp: Component):
     """
     Checks the component health_url:
     - if missing then status=unknown
@@ -113,18 +116,14 @@ async def check_one_component_health(client: httpx.AsyncClient,comp: Component):
 
     # if health_url is missing (as components are coming from external) we dont want it to fail. so mark them unknown
     if not comp.health_url:
-        return {"status":"unknown",
-                "http_status": None,
-                "latency_ms": None,
-                "error": "health_url_missing"
-                }
+        return {"status":"unknown", "http_status": None, "latency_ms": None, "error": "health_url_missing"}
     
     # measure the start time
     start_time = time.perf_counter()
 
     # try except block because network calls are unreliable and can crash your program if not handled.
     try:
-        response = await client.get(comp.health_url, timeout=2.0) #await makes it pause until response comes. imp!
+        response = await client.get(comp.health_url, timeout=2.0) # wait makes it pause until response comes. imp!
         latency_ms = int((time.perf_counter() - start_time) * 1000) # returns in seconds so multiply by 1000 for milliseconds
 
         if response.status_code == 200:
@@ -178,9 +177,10 @@ async def system_health(req: SystemRequest):
     # parents_to_children = result[2]
 
     # 2. bfs like traversal using kahns algorithm
-    order = kahns_alg(nodes, children_to_parents, parents_to_children)
+    # order = kahns_alg(nodes, children_to_parents, parents_to_children)
+    order = bfs_for_dag(nodes, children_to_parents, parents_to_children)
 
-    # 3. look up table for components
+    # 3. look up table for components. fast O(1) lookup of components by IDs. avoids repeated list scanning
     component_map = {}
     for c in req.components:
         component_map[c.id] = c
@@ -246,19 +246,6 @@ def demo_ok():
 @app.get('/demo/fail')
 def demo_fail():
     raise HTTPException(status_code=500, detail = "demo failure")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
